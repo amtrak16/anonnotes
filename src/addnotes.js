@@ -16,6 +16,7 @@ class AddNotes extends Component {
         noteErr: false,
         noteSbmBtn: true,
         notesExist: false,
+        notesSortBy: 'sortByDate',
         notes: []
       }
 
@@ -24,7 +25,9 @@ class AddNotes extends Component {
     this.postNote = this.postNote.bind(this)
     this.getNotes = this.getNotes.bind(this)
     this.sortNotes = this.sortNotes.bind(this)
-    this.sortBy = this.sortBy.bind(this)
+    this.onSortBy = this.onSortBy.bind(this)
+    this.onUpVote = this.onUpVote.bind(this)
+    this.upVote = this.upVote.bind(this)
   }
 
   componentDidMount() {
@@ -41,35 +44,19 @@ class AddNotes extends Component {
 
   onNoteClick(evt) {
     evt.preventDefault();
-    this.postNote({ note: this.state.noteVal })
-    // if (this.props.noteSuccess) {
-    //   this.setState({ noteVal: '', noteSbmBtn: true })
-    // } else {
-    //   console.log(this.props.noteSuccess)
-    //   this.setState({ noteVal: this.state.noteVal, noteErr: true, noteMsg: 'GitHub username does not exist, try again.', noteSbmBtn: true })
-    // }
+    this.postNote({ note: this.state.noteVal, votes: 0 })
   }
 
   postNote(payload) {
     let apiVal = `http://5a8318ed98bd81001246c8e1.mockapi.io/anonnote/v1/notes`
     axios.post(apiVal, payload)
       .then((response) => {
-        this.setState({ noteVal: '' })
+        this.setState({ noteVal: '', notesSortBy: 'sortByDate' })
         this.getNotes()
-        // if (payload.id == 1) {
-        //   this.setState({ noteVal: '', noteSbmBtn: true, noteSuccess: true, notePublicRepos: response.data.public_repos, noteFollowers: response.data.followers, noteAvatarURL: response.data.avatar_url })
-        // } else {
-        //   this.setState({ player2Val: '', player2SbmBtn: true, player2Success: true, player2PublicRepos: response.data.public_repos, player2Followers: response.data.followers, player2AvatarURL: response.data.avatar_url })
-        // }
       })
       .catch((error) => {
         console.log(error)
         this.setState({ noteVal: this.state.noteVal, noteErr: true, noteMsg: 'Note failed to post, please try again.', noteSbmBtn: true })
-        // if (payload.id == 1) {
-        //   this.setState({ noteVal: this.state.noteVal, noteErr: true, noteMsg: 'GitHub username does not exist, try again.', noteSbmBtn: false, noteSuccess: false, notePublicRepos: 0, noteFollowers: 0, noteAvatarURL: '' })
-        // } else {
-        //   this.setState({ player2Val: this.state.player2Val, player2Err: true, player2Msg: 'GitHub username does not exist, try again.', player2SbmBtn: false, player2Success: false, player2PublicRepos: 0, player2Followers: 0, player2AvatarURL: '' })
-        // }
       })
   }
 
@@ -78,7 +65,7 @@ class AddNotes extends Component {
     axios.get(apiVal)
       .then((response) => {
         this.setState({ notes: response.data, notesExist: true, noteErr: false, noteMsg: '' })
-        this.sortNotes('sortByDate')
+        this.sortNotes()
       })
       .catch((error) => {
         console.log(error)
@@ -86,24 +73,48 @@ class AddNotes extends Component {
       })
   }
 
-  sortBy(evt) {
-    this.sortNotes(evt.target.id)
+  onSortBy(evt) {
+    this.setState({ notesSortBy: evt.target.id })
+    this.getNotes()
   }
 
-  sortNotes(sortBy) {
+  sortNotes() {
     let sortedNotes = this.state.notes.slice()
-    if (sortBy === 'sortByDate') {
+    if (this.state.notesSortBy === 'sortByDate') {
       sortedNotes.sort(function (a, b) {
         return b.createdAt - a.createdAt;
       })
     } else {
-      if (sortBy === 'sortByVote') {
+      if (this.state.notesSortBy === 'sortByVote') {
         sortedNotes.sort(function (a, b) {
-          return a.createdAt - b.createdAt;
+          return b.votes - a.votes;
         })
       }
     }
     this.setState({ notes: sortedNotes })
+  }
+
+  onUpVote(evt) {
+    evt.preventDefault();
+    this.setState({ notesSortBy: 'sortByVote' })
+    let upVoteNotes = this.state.notes.slice()
+    let newVotes = upVoteNotes[evt.target.id].votes
+    newVotes = newVotes + 1
+    let curId = upVoteNotes[evt.target.id].id
+    this.upVote({ id: curId, votes: newVotes })
+  }
+
+  upVote(payload) {
+    let apiVal = `http://5a8318ed98bd81001246c8e1.mockapi.io/anonnote/v1/notes/${payload.id}`
+    axios.put(apiVal, payload)
+      .then((response) => {
+        this.setState({ noteErr: false, noteMsg: '' })
+        this.getNotes()
+      })
+      .catch((error) => {
+        console.log(error)
+        this.setState({ noteErr: true, noteMsg: 'Failed to update note votes.' })
+      })
   }
 
   render() {
@@ -128,7 +139,7 @@ class AddNotes extends Component {
             </div>
             {this.state.notesExist &&
               <div>
-                <div className="row padding-medium">
+                <div className="row padding-small">
                   <div className="small-12 columns">
                     <div className="card">
                       <div className="row">
@@ -136,44 +147,44 @@ class AddNotes extends Component {
                         <div className="small-1 columns">
                           <div>Sort By:</div>
                         </div>
-                        <input type="button" className="button srtBtn" id="sortByDate" onClick={this.sortBy} value="Date" />
-                        <input type="button" className="button srtBtn" id="sortByVote" onClick={this.sortBy} value="Vote" />
+                        <input type="button" className="button srtBtn" id="sortByDate" onClick={this.onSortBy} value="Date" />
+                        <input type="button" className="button srtBtn" id="sortByVote" onClick={this.onSortBy} value="Vote" />
                         <div className="small-3 columns">&nbsp;</div>
                       </div>
                     </div>
                   </div>
                 </div>
-                <div className="row padding-medium">
+                <div className="row padding-small">
                   <div className="small-12 columns">
                     <div className="card">
                       <div className="noteCtn">
                         <table className="table scrollable" summary="This summary is for screen readers and should summarize the structure of the table headers and rows">
                           <caption className="show-for-sr"></caption>
+                          <thead>
+                            <tr>
+                              <th width="50px">Note</th>
+                              <th width="50px">Created</th>
+                              <th width="50px">Votes</th>
+                              <th width="50px"></th>
+                            </tr>
+                          </thead>
                           <tbody className="tbody">
-                            <thead>
-                              <tr>
-                                <th width="900">Note</th>
-                                <th width="100">Created</th>
-                              </tr>
-                            </thead>
                             {this.state.notes.map((note, idx) => {
                               let extDate = new Date(note.createdAt * 1000)
                               let dspMonth = extDate.toLocaleString("en", { month: "short" })
                               let dspDay = extDate.getDate(), dspYear = extDate.getFullYear(), dspHour = extDate.getHours(), dspMins = extDate.getMinutes(), dspSecs = extDate.getSeconds(), dspAMPM = (dspHour >= 12) ? "PM" : "AM";
                               return (
-                                //     <div className="row" key={idx}>
-                                //       <div className="small-9 columns">&nbsp;</div>
-                                //       <div className="small-3 columns noteDsp">Noted on: {dspMonth} {dspDay}, {dspYear}, {dspHour}:{dspMins}:{dspSecs} {dspAMPM} </div>
-                                //       <div className="row"></div>
-                                //       <div className="small-12 columns noteDsp">{note.note} </div>
-                                //     </div>
                                 <tr key={idx}>
                                   <td>{note.note}</td>
                                   <td>Noted on: {dspMonth} {dspDay}, {dspYear}, {dspHour}:{dspMins}:{dspSecs} {dspAMPM}</td>
+                                  <td>{note.votes}</td>
+                                  <td>
+                                    <input type="button" className="button srtBtn" id={idx} onClick={this.onUpVote} value="Upvote!" />
+                                  </td>
+                                  {/* <td><button id="noteDtls" value={note.id}><Link to={`/NoteDetails/${trn.id}`}></Link></button></td> */}
                                 </tr>
                               )
-                            })
-                            }
+                            })}
                           </tbody>
                         </table>
                       </div>
